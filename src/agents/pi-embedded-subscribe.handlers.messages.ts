@@ -95,9 +95,10 @@ export function handleMessageUpdate(
     }
   }
 
-  if (ctx.state.streamReasoning) {
-    // Handle partial <think> tags: stream whatever reasoning is visible so far.
-    ctx.emitReasoningStream(extractThinkingFromTaggedStream(ctx.state.deltaBuffer));
+  // Always emit reasoning to hook (for Stream/Cortex), even when not displaying to user
+  const thinkingChunk = extractThinkingFromTaggedStream(ctx.state.deltaBuffer);
+  if (thinkingChunk) {
+    ctx.emitReasoningStream(thinkingChunk);
   }
 
   const next = ctx
@@ -253,8 +254,14 @@ export function handleMessageEnd(
   }
 
   if (!shouldEmitReasoningBeforeAnswer) maybeEmitReasoning();
-  if (ctx.state.streamReasoning && rawThinking) {
-    ctx.emitReasoningStream(rawThinking);
+  // Always emit final reasoning to hook (for Stream/Cortex)
+  // Extract thinking even if not in stream mode for the hook
+  const finalThinking =
+    rawThinking ||
+    extractAssistantThinking(assistantMessage) ||
+    extractThinkingFromTaggedText(rawText);
+  if (finalThinking) {
+    ctx.emitReasoningStream(finalThinking);
   }
 
   if (ctx.state.blockReplyBreak === "text_end" && onBlockReply) {
