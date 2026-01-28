@@ -5,9 +5,9 @@ import {
   type MessagingTarget,
   type MessagingTargetKind,
   type MessagingTargetParseOptions,
-  type DirectoryConfigParams,
-  type ChannelDirectoryEntry,
 } from "../channels/targets.js";
+import type { DirectoryConfigParams } from "../channels/plugins/directory-config.js";
+import type { ChannelDirectoryEntry } from "../channels/plugins/types.core.js";
 
 import { listDiscordDirectoryPeersLive } from "./directory-live.js";
 import { resolveDiscordAccount } from "./accounts.js";
@@ -82,7 +82,8 @@ export async function resolveDiscordTarget(
   if (!trimmed) return undefined;
 
   // If already a known format, parse directly
-  const directParse = parseDiscordTarget(trimmed, options);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const directParse = parseDiscordTarget(trimmed, options as any);
   if (directParse && directParse.kind !== "channel" && !isLikelyUsername(trimmed)) {
     return directParse;
   }
@@ -90,7 +91,7 @@ export async function resolveDiscordTarget(
   // Try to resolve as a username via directory lookup
   try {
     const directoryEntries = await listDiscordDirectoryPeersLive({
-      ...options,
+      ...(options as DirectoryConfigParams),
       query: trimmed,
       limit: 1,
     });
@@ -107,7 +108,8 @@ export async function resolveDiscordTarget(
   }
 
   // Fallback to original parsing (for channels, etc.)
-  return parseDiscordTarget(trimmed, options);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return parseDiscordTarget(trimmed, options as any);
 }
 
 /**

@@ -16,6 +16,7 @@ import type {
 } from "./pi-embedded-subscribe.handlers.types.js";
 import type { SubscribeEmbeddedPiSessionParams } from "./pi-embedded-subscribe.types.js";
 import { formatReasoningMessage } from "./pi-embedded-utils.js";
+import { triggerInternalHook, createInternalHookEvent } from "../hooks/internal-hooks.js";
 
 const THINKING_TAG_SCAN_RE = /<\s*(\/?)\s*(?:think(?:ing)?|thought|antthinking)\s*>/gi;
 const FINAL_TAG_SCAN_RE = /<\s*(\/?)\s*final\s*>/gi;
@@ -416,14 +417,24 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
   };
 
   const emitReasoningStream = (text: string) => {
-    if (!state.streamReasoning || !params.onReasoningStream) return;
     const formatted = formatReasoningMessage(text);
     if (!formatted) return;
     if (formatted === state.lastStreamedReasoning) return;
     state.lastStreamedReasoning = formatted;
-    void params.onReasoningStream({
+
+    // Always emit reasoning hook (for Stream/Cortex integration)
+    const hookEvent = createInternalHookEvent("reasoning", "delta", params.runId ?? "", {
       text: formatted,
+      runId: params.runId,
     });
+    void triggerInternalHook(hookEvent);
+
+    // Only call the callback if streaming is enabled
+    if (state.streamReasoning && params.onReasoningStream) {
+      void params.onReasoningStream({
+        text: formatted,
+      });
+    }
   };
 
   const resetForCompactionRetry = () => {
